@@ -13,6 +13,7 @@ from zipline.errors import (
     UnsupportedDataType,
 )
 from zipline.lib.rank import masked_rankdata_2d
+from zipline.pipeline.classifiers import Everything
 from zipline.pipeline.mixins import (
     CustomTermMixin,
     PositiveWindowLengthMixin,
@@ -394,6 +395,39 @@ class Factor(CompositeTerm):
             )
         return retval
 
+    def demean(self, mask=NotSpecified, groupby=NotSpecified):
+        """
+        Construct a new Factor that normalizes ``self`` by subtracting each
+        row's mean from the row's values.
+
+        Parameters
+        ----------
+        mask : zipline.pipeline.Filter, optional
+            A mask.
+        groups : zipline.pipeline.Classifier, optional
+            A classifier.
+
+        Notes
+        -----
+        Only supported on Factors of dtype float64.
+        """
+        if self.dtype != float64_dtype:
+            raise TypeError(
+                "demean() is only supported for Factors of dtype float64"
+            )
+
+        # TODO: This logic should probably be shared between all row-wise
+        # aggregations.
+        if mask is NotSpecified:
+            mask = self.mask
+        else:
+            mask = mask & self.mask
+
+        if groupby is NotSpecified:
+            groupby = Everything(mask=mask)
+
+        return Demean(self, dtype=self.dtype, mask=mask, groupby=groupby)
+
     def rank(self, method='ordinal', ascending=True, mask=NotSpecified):
         """
         Construct a new Factor representing the sorted rank of each column
@@ -589,6 +623,36 @@ class NumExprFactor(NumericalExpression, Factor):
     Users should rarely need to construct a NumExprFactor directly.
     """
     pass
+
+
+class Demean(Factor):
+    """
+    A Factor that normalizes an input factor by subtracting the mean of each
+    row in the input from the row.
+
+    Parameters
+    ----------
+    factor : zipline.pipeline.Factor
+        The factor to de-mean.
+    mask : zipline.pipeline.Filter
+        Mask of entries to ignore when calculating means.
+    groupby : zipline.pipeline.Classifier
+        Classifier partitioning ``factor`` into groups to use when calculating
+        means.
+    """
+    window_length = 0
+
+    def __new__(cls, factor, mask, groupby, dtype):
+        return super(Demean, cls).__new__(
+            cls,
+            inputs=(factor, groupby),
+            missing_value=factor.missing_value,
+            mask=mask,
+            dtype=dtype,
+        )
+
+    def _compute(self, arrays, assets, mask):
+        pass
 
 
 class Rank(SingleInputMixin, Factor):
