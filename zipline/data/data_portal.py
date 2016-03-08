@@ -712,24 +712,54 @@ class DataPortal(object):
         of minute frequency for the given sids.
         """
         # get all the minutes for this window
-        mm = self._equity_minute_history_loader._market_minutes
-        if end_dt < mm[0]:
-            raise ValueError("Cannot calculate history window that ends "
-                             "before the first trading day!")
+        mm = self.env.market_minutes
         end_loc = mm.get_loc(end_dt)
-        start_loc = max(0, end_loc - bar_count + 1)
+        start_loc = end_loc - bar_count + 1
         minutes_for_window = mm[start_loc:end_loc + 1]
 
-        bars_to_prepend = bar_count - len(minutes_for_window)
+        first_trading_day = self._equity_minute_reader.first_trading_day
+
+        if minutes_for_window[0] < first_trading_day:
+            # but then cut it down to only the minutes after
+            # the first trading day.
+            modified_minutes_for_window = minutes_for_window[
+                minutes_for_window.slice_indexer(first_trading_day)]
+
+            modified_minutes_length = len(modified_minutes_for_window)
+
+            if modified_minutes_length == 0:
+                raise ValueError("Cannot calculate history window that ends "
+                                 "before the first trading day!")
+
+            bars_to_prepend = 0
+            nans_to_prepend = None
+
+            if modified_minutes_length < bar_count:
+                first_trading_date = first_trading_day.date()
+                if modified_minutes_for_window[0].date() == first_trading_date:
+                    # the beginning of the window goes before our global
+                    # trading start date
+                    bars_to_prepend = bar_count - modified_minutes_length
+                    nans_to_prepend = np.repeat(np.nan, bars_to_prepend)
+
+            if len(assets) == 0:
+                return pd.DataFrame(
+                    None,
+                    index=modified_minutes_for_window,
+                    columns=None
+                )
+            query_minutes = modified_minutes_for_window
+        else:
+            query_minutes = minutes_for_window
+            bars_to_prepend = 0
 
         asset_minute_data = self._get_minute_window_for_assets(
             assets,
             field_to_use,
-            minutes_for_window,
+            query_minutes,
         )
 
         if bars_to_prepend != 0:
-            import nose; nose.tools.set_trace()
             if field_to_use == "volume":
                 filler = np.zeros((len(nans_to_prepend), len(assets)))
             else:
