@@ -324,9 +324,17 @@ class TradingEnvironment(object):
         start_date = self.normalize_date(start)
         end_date = self.normalize_date(end)
 
+        o_and_c = self.open_and_closes[
+            self.open_and_closes.index.slice_indexer(start_date, end_date)]
+
+        opens = o_and_c.market_open.values
+        closes = o_and_c.market_close.values
+
         all_minutes = []
-        for day in self.days_in_range(start_date, end_date):
-            day_minutes = self.market_minutes_for_day(day)
+        for i in range(0, len(o_and_c.index)):
+            market_open = opens[i]
+            market_close = closes[i]
+            day_minutes = pd.date_range(market_open, market_close, freq='T')
             all_minutes.append(day_minutes)
 
         # Concatenate all minutes and truncate minutes before start/after end.
