@@ -991,7 +991,7 @@ class TestAlgoScript(TestCase):
 
         days = 251
 
-        trades_by_sid = {
+        cls.trades_by_sid = {
             0: factory.create_trade_history(
                 0,
                 [10.0] * days,
@@ -1008,14 +1008,16 @@ class TestAlgoScript(TestCase):
                 cls.env)
         }
 
-        cls.data_portal = create_data_portal_from_trade_history(cls.env,
-                                                                cls.tempdir,
-                                                                cls.sim_params,
-                                                                trades_by_sid)
-
         cls.zipline_test_config = {
             'sid': 0,
         }
+
+    def setUp(self):
+        self.data_portal = create_data_portal_from_trade_history(
+            self.env,
+            self.tempdir,
+            self.sim_params,
+            self.trades_by_sid)
 
     @classmethod
     def tearDownClass(cls):
