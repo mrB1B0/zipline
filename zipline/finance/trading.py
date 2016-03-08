@@ -327,14 +327,17 @@ class TradingEnvironment(object):
         o_and_c = self.open_and_closes[
             self.open_and_closes.index.slice_indexer(start_date, end_date)]
 
-        opens = o_and_c.market_open.values
-        closes = o_and_c.market_close.values
+        opens = o_and_c.market_open
+        closes = o_and_c.market_close
+
+        one_min = pd.Timedelta(1, unit='m')
 
         all_minutes = []
         for i in range(0, len(o_and_c.index)):
             market_open = opens[i]
             market_close = closes[i]
-            day_minutes = pd.date_range(market_open, market_close, freq='T')
+            day_minutes = np.arange(market_open, market_close + one_min,
+                                    dtype='datetime64[m]')
             all_minutes.append(day_minutes)
 
         # Concatenate all minutes and truncate minutes before start/after end.

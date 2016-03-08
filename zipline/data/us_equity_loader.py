@@ -272,8 +272,8 @@ class USEquityMinuteHistoryLoader(object):
     def __init__(self, env, minute_reader, adjustment_reader):
         self.env = env
         self._minute_reader = minute_reader
-        self._market_minutes = self.env.minutes_for_days_in_range(
-            minute_reader.first_trading_day, self.env.last_trading_day)
+#        self._market_minutes = self.env.minutes_for_days_in_range(
+#            minute_reader.first_trading_day, self.env.last_trading_day)
         self._adjustments_reader = adjustment_reader
         self._minute_window_blocks = {}
 
