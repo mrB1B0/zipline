@@ -21,6 +21,28 @@ from cpython cimport bool
 
 from zipline.assets import Asset
 
+
+class assert_keywords(object):
+    """
+    Asserts that the keywords passed into the wrapped function are included
+    in those passed into this decorator. If not, raise a TypeError with a
+    meaningful message, unlike the one cython returns by default.
+    """
+
+    def __init__(self, *args):
+        self.names = args
+
+    def __call__(self, func):
+        def assert_keywords_and_call(*args, **kwargs):
+            for field in kwargs:
+                if field not in self.names:
+                    raise TypeError("%s() got an unexpected keyword argument"
+                                    " '%s'" % (func.__name__, field))
+            return func(*args, **kwargs)
+
+        return assert_keywords_and_call
+
+
 cdef class BarData:
     """
     Provides methods to access spot value or history windows of price data.
@@ -83,6 +105,7 @@ cdef class BarData:
             self.data_frequency
         )
 
+    @assert_keywords('assets', 'fields')
     def current(self, assets, fields):
         """
         Returns the current value of the given assets for the given fields
@@ -276,6 +299,7 @@ cdef class BarData:
 
             return not (last_traded_dt is pd.NaT)
 
+    @assert_keywords('assets', 'fields', 'bar_count', 'frequency')
     def history(self, assets, fields, bar_count, frequency):
         """
         Returns a window of data for the given assets and fields.

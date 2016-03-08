@@ -93,6 +93,10 @@ from zipline.test_algorithms import (
     noop_algo,
     record_float_magic,
     record_variables,
+    call_with_kwargs,
+    call_without_kwargs,
+    call_with_bad_kwargs_current,
+    call_with_bad_kwargs_history
 )
 from zipline.utils.context_tricks import CallbackManager
 import zipline.utils.events
@@ -1293,6 +1297,49 @@ def handle_data(context, data):
             env=self.env,
         )
         test_algo.run(self.data_portal)
+
+    def test_without_kwargs(self):
+        """
+        Test that api methods on the data object can be called with positional
+        arguments.
+        """
+        test_algo = TradingAlgorithm(
+            script=call_without_kwargs,
+            sim_params=self.sim_params,
+            env=self.env,
+        )
+        test_algo.run(self.data_portal)
+
+    def test_good_kwargs(self):
+        """
+        Test that api methods on the data object can be called with keyword
+        arguments.
+        """
+        test_algo = TradingAlgorithm(
+            script=call_with_kwargs,
+            sim_params=self.sim_params,
+            env=self.env,
+        )
+        test_algo.run(self.data_portal)
+
+    @parameterized.expand([('history', call_with_bad_kwargs_history),
+                           ('current', call_with_bad_kwargs_current)])
+    def test_bad_kwargs(self, name, algo_text):
+        """
+        Test that api methods on the data object called with bad kwargs return
+        a meaningful TypeError that we create, rather than an unhelpful cython
+        error
+        """
+        with self.assertRaises(TypeError) as cm:
+            test_algo = TradingAlgorithm(
+                script=algo_text,
+                sim_params=self.sim_params,
+                env=self.env,
+            )
+            test_algo.run(self.data_portal)
+
+        self.assertEqual("%s() got an unexpected keyword argument 'blahblah'"
+                         % name, cm.exception.args[0])
 
 
 class TestGetDatetime(TestCase):
